@@ -1,0 +1,23 @@
+---
+title: "microclimate"
+author: "Dewi"
+date: "26/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r, message=FALSE, cache = TRUE}
+readings <- read_csv("data/Microclimate_Sensor_Readings.csv")
+locations <- read_csv("data/Microclimate_Sensor_Locations.csv")
+```
+
+```{r}
+new_dat <- left_join(readings, locations, by = "site_id") %>%
+  filter(type == "TPH.TEMP-EPA-1h")
+```
+
+
