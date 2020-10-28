@@ -8,6 +8,9 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(lubridate)
+library(sugrrants)
+library(ggmap)
 ```
 
 ```{r, message=FALSE, cache = TRUE}
@@ -17,7 +20,99 @@ locations <- read_csv("data/Microclimate_Sensor_Locations.csv")
 
 ```{r}
 new_dat <- left_join(readings, locations, by = "site_id") %>%
-  filter(type == "TPH.TEMP-EPA-1h")
+  filter(type == "TPH.TEMP-EPA-1h") %>%
+  mutate(local_time = ymd_hms(local_time))
+
+new_dat <- new_dat %>%
+  mutate(date = format(as.POSIXct(strptime(local_time,"%Y-%m-%d %H:%M",tz="")) ,format = "%Y-%m-%d"),
+         month = month(local_time)) %>%
+  mutate(season = ifelse(month == 12 | month == 1 | month == 2, "summer",
+                         ifelse(month == 3 | month == 4 | month == 5, "autumn",
+                                ifelse(month == 6 | month == 7 | month == 8, "winter",
+                                       "spring"))))
+  
 ```
 
+## Visualisation 1
+
+```{r}
+ggplot(new_dat,
+       aes(x = local_time, 
+           y = value)) +
+  geom_line(size = 0.3) +
+  geom_smooth(method = "loess",
+              se = FALSE) +
+  facet_grid(site_id ~ ., 
+             # this code presents the facets in a  nice way
+             labeller = labeller(site_id = label_wrap_gen(20))) +
+  # this code mades the x axis a bit nicer to read
+  scale_x_datetime(date_labels = "%d %b %Y", 
+                   date_minor_breaks = "1 month") +
+  labs(x = "Date Time")
+```
+
+## Visualisation 2
+
+```{r}
+ggplot(new_dat,
+       aes(x = local_time,
+           y = value,
+           group = date,
+           colour = site_id)) +
+  geom_line() +
+  facet_wrap(~ site_id,
+             labeller = labeller(site_id = label_wrap_gen(20))) +
+  scale_colour_brewer(palette = "Dark2",
+                      name = "site_id") +
+  theme(legend.position = "none")
+```
+
+## Visualisation 3
+
+```{r}
+ggplot(new_dat,
+       aes(y = value,
+           x = site_id,
+           colour = site_id)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom")
+```
+
+## Visualisation 4
+
+```{r, fig.height=9, fig.width=5}
+ggplot(new_dat,
+       aes(y = value,
+           x = site_id,
+           colour = site_id)) +
+  geom_boxplot()+
+  theme(legend.position = "bottom") +
+  facet_wrap(~ season, ncol = 1)
+```
+```{r}
+# Compute the analysis of variance
+res.aov <- aov(value ~ site_id, data = new_dat)
+# Summary of the analysis
+summary(res.aov)
+```
+
+```{r}
+melb_map <- read_rds(here::here("data/melb-map.rds")) 
+
+ggmap(melb_map) +
+  geom_point(data = locations, 
+             aes(x = longitude, 
+                 y = latitude, 
+                 colour = site_id),
+             size = 2, 
+             shape = 17) +
+  labs(x = "Longitude",
+       y = "Latitude") +
+  scale_colour_brewer(palette = "Dark2", 
+                      name = "site_id") +
+  guides(col = guide_legend(nrow = 2, 
+                            byrow = TRUE)) +
+  theme(legend.position = "bottom") 
+
+```
 
