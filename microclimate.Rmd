@@ -14,6 +14,7 @@ library(ggmap)
 library(leaflet)
 library(plotly)
 library(forcats)
+library(tsibble)
 ```
 
 ```{r, message=FALSE, cache = TRUE}
@@ -48,7 +49,7 @@ color_index <- c(
       arc1045 = "turquoise3"
     )
 
-ggplot(new_dat,
+p0 <- ggplot(new_dat,
        aes(x = local_time, 
            y = value,
            color = site_id)) +
@@ -56,7 +57,7 @@ ggplot(new_dat,
             alpha = 0.8) +
   geom_smooth(method = "loess",
               se = FALSE,
-              size = 1) +
+              size = 0.8) +
   facet_grid(site_id ~ ., 
              # this code presents the facets in a  nice way
              labeller = labeller(site_id = label_wrap_gen(20))) +
@@ -66,11 +67,14 @@ ggplot(new_dat,
   labs(x = "Date Time") +
   scale_color_manual(values = color_index) +
   theme(legend.position = "none")
+
+ggplotly(p0)
 ```
 
 ## Visualisation 2
 
 ```{r}
+
 ggplot(new_dat,
        aes(x = local_time,
            y = value,
@@ -81,20 +85,60 @@ ggplot(new_dat,
              labeller = labeller(site_id = label_wrap_gen(20))) +
   theme(legend.position = "none") +
   scale_color_manual(values = color_index)
-  
+```
+```{r}
+group_sensor <- new_dat %>%
+  group_by(local_time) %>%
+  summarise(med_tem = median(value, na.rm = TRUE)) %>%
+  ungroup()
+
+new_dat <- left_join(new_dat, group_sensor, by = "local_time")
+```
+
+```{r}
+ts_new_dat <- as_tsibble(new_dat, index = local_time,
+                         key = site_id) 
+
+new_dat_miss <- fill_gaps(ts_new_dat, .full=TRUE) 
+
+
+impute_temp <- left_join(new_dat_miss, group_sensor, by = "local_time")
+
+imputed_temp <- impute_temp %>%
+   mutate(value = ifelse(is.na(impute_temp$value),
+                              impute_temp$med_tem.y, 
+                              impute_temp$value))
+
+
+
+
+ggplot(imputed_temp,
+       aes(x = local_time,
+           y = value,
+           group = date,
+           colour = site_id)) +
+  geom_line() +
+  facet_wrap(~ site_id,
+             labeller = labeller(site_id = label_wrap_gen(20))) +
+  theme(legend.position = "none") +
+  scale_color_manual(values = color_index)
+
 ```
 
 ## Visualisation 3
 
 ```{r}
-ggplot(new_dat,
+
+bp <- ggplot(imputed_temp,
        aes(y = value,
-           x = site_id,
+           x = fct_reorder(site_id, value, .fun = median, .desc = TRUE),
            colour = site_id)) +
   geom_boxplot() +
   theme(legend.position = "bottom") +
   scale_colour_manual(values = color_index) +
   theme(legend.position = "none")
+
+ggplotly(bp)
 ```
 
 ## Visualisation 4
@@ -115,16 +159,16 @@ get_plot <- function(df){
   ggplotly(plot)
 }
 
-summer <- new_dat %>%
+summer <- imputed_temp %>%
   filter(season == "summer")
 
-autumn <- new_dat %>%
+autumn <- imputed_temp %>%
   filter(season == "autumn")
 
-winter <- new_dat %>%
+winter <- imputed_temp %>%
   filter(season == "winter")
 
-spring <- new_dat %>%
+spring <- imputed_temp %>%
   filter(season == "spring")
 
 get_plot(summer)
@@ -151,45 +195,45 @@ leaflet(locations) %>%
       addCircleMarkers(lng = 144.9641,
                  lat = -37.80052,
                  color = "navy",
-                 label = "arc1046, 15.22C",
+                 label = "arc1046, 14.38C",
                  stroke = FALSE, fillOpacity = 0.7,
                  labelOptions = labelOptions(noHide = F, textOnly = FALSE),
-                 radius = 15.22) %>%
+                 radius = 14.38) %>%
       addCircleMarkers(lng = 144.9609,
                  lat = -37.80230,
                  color = "tomato",
                  stroke = FALSE, fillOpacity = 0.7,
-                 label = "arc1047, 14.81C",
+                 label = "arc1047, 14.79C",
                  labelOptions = labelOptions(noHide = F, textOnly = FALSE),
-                 radius = 14.81) %>%
+                 radius = 14.79) %>%
       addCircleMarkers(lng = 144.9646,
                  lat = -37.80058,
                  color = "purple",
                  stroke = FALSE, fillOpacity = 0.7,
-                 label = "arc1048, 14.56C",
+                 label = "arc1048, 14.22C",
                  labelOptions = labelOptions(noHide = F, textOnly = FALSE),
-                 radius = 14.56) %>%
+                 radius = 14.22) %>%
       addCircleMarkers(lng = 144.9651,
                  lat = -37.80063,
                  color = "magenta",
                  stroke = FALSE, fillOpacity = 0.7,
-                 label = "arc1050, 14.14C",
+                 label = "arc1050, 14.12C",
                  labelOptions = labelOptions(noHide = F, textOnly = FALSE),
-                 radius = 14.14) %>%
+                 radius = 14.12) %>%
       addCircleMarkers(lng = 144.9665,
                  lat = -37.80079,
                  color = "turquoise",
                  stroke = FALSE, fillOpacity = 0.7,
-                 label = "arc1045, 16.36C",
+                 label = "arc1045, 15.04C",
                  labelOptions = labelOptions(noHide = F, textOnly = FALSE),
-                 radius = 16.36) %>%
+                 radius = 15.04) %>%
       addProviderTiles("Stamen.Watercolor") 
   
 
 ```
 
 ```{r}
-new_dat %>%
+imputed_temp %>%
   group_by(site_id) %>%
   summarise(med = median(value))
 ```
