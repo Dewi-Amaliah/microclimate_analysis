@@ -1,0 +1,345 @@
+---
+title: "Microclimate in Melbourne"
+subtitle: "ETC5523 Presentation"
+author: "Abhishek Sinha & Dewi Amaliah"
+institute: "Monash University"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    seal: false
+    css: 
+      - xaringan-themer.css
+      - ninjutsu
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+      ratio: '16:9'
+---
+
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(xaringanthemer)
+
+
+style_duo_accent(primary_color = "#035AA6", secondary_color = "#03A696")
+style_xaringan(header_h1_font_size = "4.25rem",
+               header_color = "#21618C")
+```
+
+class: left, middle
+
+background-image: url(image/cover.gif)
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+```
+
+
+# Microclimate in <br> Melbourne
+
+
+## ETC5523 Presentation
+
+
+<br>
+
+.left[### `team::tau` <br> Abhishek Sinha & Dewi Amaliah]
+
+---
+
+## What is microclimate?
+
+.pull-left[
+![garden](https://images.unsplash.com/photo-1584676173446-15419d1faab8?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=967&q=80)
+]
+
+---
+
+class: left, middle
+background-image: url(image/bg2.gif)
+background-size: cover
+
+.pull-left[
+## Why it is important?
+]
+
+.pull-right[
+
+]
+
+---
+
+
+## The question
+
+
+.center[
+![detective pikachu](https://media2.giphy.com/media/NS7gPxeumewkWDOIxi/giphy.gif?cid=ecf05e47jkfuf8vvdb21k60cg0y4y80rj8u5g23j0kx3x4zn&rid=giphy.gif)]
+
+<br>
+.center[
+Is there evidence of a microclimate within Melbourne, 
+<br>
+that is, are there noticeable differences in the temperature across the city?
+]
+
+
+
+---
+background-image: url(image/bg.png)
+background-size: cover
+
+## Data and Variables
+
+---
+background-image: url(image/bg.png)
+background-size: cover
+
+## `r emo::ji("metrics")` The pattern
+
+```{r library, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(lubridate)
+library(leaflet)
+library(plotly)
+library(forcats)
+library(tsibble)
+```
+
+
+```{r, message=FALSE, cache = TRUE, echo=FALSE}
+readings <- read_csv("data/Microclimate_Sensor_Readings.csv")
+locations <- read_csv("data/Microclimate_Sensor_Locations.csv")
+```
+
+```{r, echo=FALSE}
+
+new_dat <- left_join(readings, locations, by = "site_id") %>%
+  filter(type == "TPH.TEMP-EPA-1h") %>%
+  mutate(local_time = ymd_hms(local_time)) %>%
+  mutate(date = format(as.POSIXct(strptime(local_time,"%Y-%m-%d %H:%M",tz="")) ,format = "%Y-%m-%d"),
+         month = month(local_time)) %>%
+  mutate(season = ifelse(month == 12 | month == 1 | month == 2, "summer",
+                         ifelse(month == 3 | month == 4 | month == 5, "autumn",
+                                ifelse(month == 6 | month == 7 | month == 8, "winter",
+                                       "spring"))))
+  
+```
+
+
+.pull-left[
+
+```{r pattern, echo = FALSE, message = FALSE, fig.retina= 4}
+
+color_index <- c(
+      arc1046 = "navy",
+      arc1047 = "tomato",
+      arc1048 = "mediumpurple",
+      arc1050 = "hotpink1",
+      arc1045 = "turquoise3"
+    )
+
+pattern <- ggplot(new_dat,
+       aes(x = local_time, 
+           y = value,
+           color = site_id)) +
+  geom_line(size = 0.3,
+            alpha = 0.8) +
+  geom_smooth(method = "loess",
+              se = FALSE,
+              size = 0.8) +
+  facet_grid(site_id ~ ., 
+             # this code presents the facets in a  nice way
+             labeller = labeller(site_id = label_wrap_gen(20))) +
+  # this code mades the x axis a bit nicer to read
+  scale_x_datetime(date_labels = "%d %b %Y", 
+                   date_minor_breaks = "1 month") +
+  labs(x = "Date Time",
+       y = "Temperature (°C)") +
+  scale_color_manual(values = color_index) +
+  theme(legend.position = "none") +
+  ggtitle("The temperature recorded in Melbourne in Nov '19 - Oct '20 by sensors")
+
+pattern
+
+#ggplotly(pattern)
+```
+]
+
+.pull-right[
+
+### What do we learn ?
+
+
+
+]
+
+---
+```{r group-sensor, echo = FALSE, message= FALSE}
+group_sensor <- new_dat %>%
+  group_by(local_time) %>%
+  summarise(med_tem = median(value, na.rm = TRUE)) %>%
+  ungroup()
+
+```
+
+```{r imputation, echo = FALSE, message = FALSE}
+ts_new_dat <- as_tsibble(new_dat, index = local_time,
+                         key = site_id) 
+
+new_dat_miss <- fill_gaps(ts_new_dat, .full=TRUE) 
+
+
+impute_temp <- left_join(new_dat_miss, group_sensor, by = "local_time")
+
+imputed_temp <- impute_temp %>%
+   mutate(value = ifelse(is.na(impute_temp$value),
+                              impute_temp$med_tem, 
+                              impute_temp$value))
+```
+
+.left-column[
+
+## Does it make sense?
+
+]
+
+.right-column[
+
+### The location of each sensor 
+
+```{r map, echo = FALSE, out.width="100%"}
+#melb_map <- read_rds(here::here("data/sensors.rds")) 
+
+
+
+leaflet(locations) %>%
+      addCircleMarkers(lng = 144.9641,
+                 lat = -37.80052,
+                 color = "navy",
+                 label = "arc1046, 14.38C",
+                 stroke = FALSE, fillOpacity = 0.7,
+                 labelOptions = labelOptions(noHide = F, textOnly = FALSE),
+                 radius = 14.38) %>%
+      addCircleMarkers(lng = 144.9609,
+                 lat = -37.80230,
+                 color = "tomato",
+                 stroke = FALSE, fillOpacity = 0.7,
+                 label = "arc1047, 14.79C",
+                 labelOptions = labelOptions(noHide = F, textOnly = FALSE),
+                 radius = 14.79) %>%
+      addCircleMarkers(lng = 144.9646,
+                 lat = -37.80058,
+                 color = "purple",
+                 stroke = FALSE, fillOpacity = 0.7,
+                 label = "arc1048, 14.22C",
+                 labelOptions = labelOptions(noHide = F, textOnly = FALSE),
+                 radius = 14.22) %>%
+      addCircleMarkers(lng = 144.9651,
+                 lat = -37.80063,
+                 color = "magenta",
+                 stroke = FALSE, fillOpacity = 0.7,
+                 label = "arc1050, 14.12C",
+                 labelOptions = labelOptions(noHide = F, textOnly = FALSE),
+                 radius = 14.12) %>%
+      addCircleMarkers(lng = 144.9665,
+                 lat = -37.80079,
+                 color = "turquoise",
+                 stroke = FALSE, fillOpacity = 0.7,
+                 label = "arc1045, 15.04C",
+                 labelOptions = labelOptions(noHide = F, textOnly = FALSE),
+                 radius = 15.04) %>%
+      addProviderTiles("Stamen.Watercolor") 
+  
+
+```
+
+
+]
+
+---
+
+class: center
+
+background-image: url(image/bg.png)
+background-size: cover
+
+## What if we look at it at a different view?
+
+![question](https://media1.giphy.com/media/xT5LMHWFoqkwqz51Kg/giphy.gif?cid=ecf05e47wm4ckml6thyesm805xzr4xpufkhmij8mujeknwac&rid=giphy.gif)
+
+Let's observe the temperature in each season.
+
+---
+
+background-image: url(image/bg.png)
+background-size: cover
+
+```{r boxplot, echo = FALSE}
+
+get_plot <- function(df){
+  plot <- ggplot(df,
+       aes(y = value,
+           x = fct_reorder(site_id, value),
+           colour = site_id)) +
+  geom_boxplot()+
+  theme(legend.position = "bottom") +
+  scale_colour_manual(values = color_index) +
+  xlab("site ID") +
+  ylab("temperature in Celcius") +
+  theme(legend.position = "none") 
+  ggplotly(plot)
+}
+
+summer <- imputed_temp %>%
+  filter(season == "summer")
+
+autumn <- imputed_temp %>%
+  filter(season == "autumn")
+
+winter <- imputed_temp %>%
+  filter(season == "winter")
+
+spring <- imputed_temp %>%
+  filter(season == "spring")
+
+summer_p <- get_plot(summer) #%>% layout(title = "Summer")
+autumn_p <- get_plot(autumn) #%>% layout(title = "Autumn")
+winter_p <- get_plot(winter) #%>% layout(title = "Winter")
+spring_p <- get_plot(spring) #%>% layout(title = "Spring")
+
+sp1<- subplot(summer_p, winter_p, nrows = 2)
+sp2<- subplot(autumn_p, spring_p, nrows = 2)
+  
+```
+
+.pull-left[
+
+.center[Summer]
+
+```{r sp1, echo = FALSE}
+sp1
+```
+
+.center[Winter]
+]
+
+.pull-right[
+
+.center[Autumn]
+
+```{r sp2, echo = FALSE}
+sp2
+```
+
+.center[Spring]
+
+]
+
+
+
+---
+
+## Conclusion
+
