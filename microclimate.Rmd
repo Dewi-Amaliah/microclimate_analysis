@@ -6,11 +6,9 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(lubridate)
-library(sugrrants)
-library(ggmap)
 library(leaflet)
 library(plotly)
 library(forcats)
@@ -143,7 +141,7 @@ ggplotly(bp)
 
 ## Visualisation 4
 
-```{r}
+```{r boxplot}
 
 get_plot <- function(df){
   plot <- ggplot(df,
@@ -171,12 +169,15 @@ winter <- imputed_temp %>%
 spring <- imputed_temp %>%
   filter(season == "spring")
 
-get_plot(summer)
-get_plot(autumn)
-get_plot(winter)
-get_plot(spring)
+summer_p <- get_plot(summer) #%>% layout(title = "Summer")
+autumn_p <- get_plot(autumn) #%>% layout(title = "Autumn")
+winter_p <- get_plot(winter) #%>% layout(title = "Winter")
+spring_p <- get_plot(spring) #%>% layout(title = "Spring")
 
+sp1<- subplot(summer_p, autumn_p, nrows = 2)
+sp2<- subplot(winter_p, spring_p, nrows = 2)
   
+winter_p
 ```
 
 ```{r}
@@ -187,7 +188,7 @@ summary(res.aov)
 ```
 
 ```{r}
-melb_map <- read_rds(here::here("data/sensors.rds")) 
+#melb_map <- read_rds(here::here("data/sensors.rds")) 
 
 
 
