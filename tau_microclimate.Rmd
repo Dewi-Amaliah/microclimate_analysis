@@ -54,6 +54,14 @@ options(htmltools.dir.version = FALSE)
 ![garden](https://images.unsplash.com/photo-1584676173446-15419d1faab8?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=967&q=80)
 ]
 
+.pull-right[
+
+### *Have you ever been to a place where it cooler/hotter than its surrounding?*
+
+A microclimate is a local set of atmospheric conditions that differ from those in the surrounding areas, often with a slight difference but sometimes with a substantial one ([Wikipedia, 2020](https://en.wikipedia.org/wiki/Microclimate))
+
+]
+
 ---
 
 class: left, middle
@@ -65,6 +73,10 @@ background-size: cover
 ]
 
 .pull-right[
+
+## *It is to improve the service delivery.*
+
+> "Microclimate sensors on a City Circle tram would help us to understand how temperature and humidity impact the comfort of passengers and YarraTrams employees at tram stops given the Melbourne's unpredictable weather." - [*Melbourne Lord Mayor, Sally Capp, 2020*](https://smart-cities.com.au/melbourne-trials-innovative-sensor-technology-program/)
 
 ]
 
@@ -92,6 +104,23 @@ background-size: cover
 
 ## Data and Variables
 
+<br>
+
+### Data Source
+
+The [temperature](https://data.melbourne.vic.gov.au/Environment/Microclimate-Sensor-Readings/u4vh-84j8) and [sensor locations](https://data.melbourne.vic.gov.au/Environment/Microclimate-Sensor-Locations/irqv-hjr4) data are downloaded from the **City of Melbourne Open Data Website**.
+
+--
+
+<br>
+
+### Key Variables
+
+- 5a.EPA-1h: Temperature (in degree Celsius) in one hour average.
+- local_time: Local date/time in UTC
+- site_id: The site id based on sensors' location.
+
+
 ---
 background-image: url(image/bg.png)
 background-size: cover
@@ -105,6 +134,7 @@ library(leaflet)
 library(plotly)
 library(forcats)
 library(tsibble)
+library(anytime)
 ```
 
 
@@ -117,6 +147,7 @@ locations <- read_csv("data/Microclimate_Sensor_Locations.csv")
 
 new_dat <- left_join(readings, locations, by = "site_id") %>%
   filter(type == "TPH.TEMP-EPA-1h") %>%
+  mutate(hour = sub(".*? ", "", local_time)) %>%
   mutate(local_time = ymd_hms(local_time)) %>%
   mutate(date = format(as.POSIXct(strptime(local_time,"%Y-%m-%d %H:%M",tz="")) ,format = "%Y-%m-%d"),
          month = month(local_time)) %>%
@@ -171,11 +202,39 @@ pattern
 
 ### What do we learn ?
 
-
+- The temperature in each place has the same pattern.
+- The peak of temperature in January. 
+- The lowest temperature in July. 
+- There are missing values in some period, especially in site "arc1045", "arc1046",
+and "arc1048".
 
 ]
 
 ---
+
+## How did we handle the missing values?
+
+.pull-left[
+
+```{r, echo = FALSE}
+
+ggplot(new_dat,
+       aes(x = local_time,
+           y = value,
+           group = date,
+           colour = site_id)) +
+  geom_line() +
+  xlab("Local time") +
+  ylab("Temperature °C") +
+  facet_wrap(~ site_id,
+             labeller = labeller(site_id = label_wrap_gen(20))) +
+  theme(legend.position = "none") +
+  scale_color_manual(values = color_index)
+```
+
+]
+
+
 ```{r group-sensor, echo = FALSE, message= FALSE}
 group_sensor <- new_dat %>%
   group_by(local_time) %>%
@@ -198,7 +257,29 @@ imputed_temp <- impute_temp %>%
                               impute_temp$med_tem, 
                               impute_temp$value))
 ```
+.pull-right[
 
+The missing values might affect the median value of the temperature. We imputed the missing values using the median imputation. 
+
+```{r, echo = FALSE, fig.width = 5, fig.height = 5, message = FALSE, warning = FALSE}
+ggplot(imputed_temp,
+       aes(x = local_time,
+           y = value,
+           group = date,
+           colour = site_id)) +
+  geom_line() +
+  xlab("Local time") +
+  ylab("Temperature °C") +
+  facet_wrap(~ site_id,
+             labeller = labeller(site_id = label_wrap_gen(20))) +
+  theme(legend.position = "none") +
+  scale_color_manual(values = color_index) +
+  ggtitle("The imputed temperature for each sensor")
+```
+
+]
+
+---
 .left-column[
 
 ## Does it make sense?
@@ -265,11 +346,15 @@ class: center
 background-image: url(image/bg.png)
 background-size: cover
 
-## What if we look at it at a different view?
+## What if we look at it at different views?
 
-![question](https://media1.giphy.com/media/xT5LMHWFoqkwqz51Kg/giphy.gif?cid=ecf05e47wm4ckml6thyesm805xzr4xpufkhmij8mujeknwac&rid=giphy.gif)
+<br>
 
-Let's observe the temperature in each season.
+![question](https://media0.giphy.com/media/3o6Zt79w3JcZv2Ex56/giphy.gif?cid=ecf05e476ccr91hsbwu6g5qi3hxzf24cd4gvcsiga9hms2my&rid=giphy.gif)
+
+<br>
+
+### Let's first observe the temperature in each season.
 
 ---
 
@@ -278,12 +363,12 @@ background-size: cover
 
 ```{r boxplot, echo = FALSE}
 
+
 get_plot <- function(df){
-  plot <- ggplot(df,
-       aes(y = value,
+  plot <- ggplot(df) +
+  geom_boxplot(aes(y = value,
            x = fct_reorder(site_id, value),
            colour = site_id)) +
-  geom_boxplot()+
   theme(legend.position = "bottom") +
   scale_colour_manual(values = color_index) +
   xlab("site ID") +
@@ -311,7 +396,7 @@ spring_p <- get_plot(spring) #%>% layout(title = "Spring")
 
 sp1<- subplot(summer_p, winter_p, nrows = 2)
 sp2<- subplot(autumn_p, spring_p, nrows = 2)
-  
+
 ```
 
 .pull-left[
@@ -337,9 +422,71 @@ sp2
 
 ]
 
+---
 
+## How about the time hour?
+
+.left-column[
+
+<br>
+<br>
+<br>
+.right[Morning]
+
+<br>
+<br>
+<br>
+.right[Lunch time]
+
+<br>
+<br>
+<br>
+.right[Afternoon]
+
+
+]
+.right-column[
+
+```{r, echo = FALSE}
+
+morning <- imputed_temp %>%
+  filter(hour == "08:00:00 AM")
+
+lunch <- imputed_temp %>%
+  filter(hour == "12:00:00 PM")
+
+afternoon <- imputed_temp %>%
+  filter(hour == "05:00:00 PM")
+
+morning_p <- get_plot(morning)
+lunch_p <- get_plot(lunch)
+afternoon_p <- get_plot(afternoon)
+
+sp3<- subplot(morning_p, lunch_p, afternoon_p, nrows = 3)
+
+sp3
+
+  
+```
+]
 
 ---
 
 ## Conclusion
+
+- ### The distribution of temperature is generally the same for every sensor.
+
+--
+
+- ### Generally, the gap of median temperature in each sensor location is really small (less than 1°C).
+
+--
+
+- ### Season-wise, there is a difference in the median of temperature between each place, but it is small.
+
+--
+- ### The microclimate is more noticeable by the hour.
+
+
+
 
