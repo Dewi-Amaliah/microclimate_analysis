@@ -23,7 +23,10 @@ locations <- read_csv("data/Microclimate_Sensor_Locations.csv")
 ```{r}
 new_dat <- left_join(readings, locations, by = "site_id") %>%
   filter(type == "TPH.TEMP-EPA-1h") %>%
-  mutate(local_time = ymd_hms(local_time))
+  mutate(local_time = ymd_hms(local_time)) %>%
+  mutate(melb_time = force_tzs(ymd_hms(local_time),
+                                 tzones = "UTC", 
+                                 tzone_out = "Australia/Melbourne"))
 
 new_dat <- new_dat %>%
   mutate(date = format(as.POSIXct(strptime(local_time,"%Y-%m-%d %H:%M",tz="")) ,format = "%Y-%m-%d"),
@@ -31,7 +34,12 @@ new_dat <- new_dat %>%
   mutate(season = ifelse(month == 12 | month == 1 | month == 2, "summer",
                          ifelse(month == 3 | month == 4 | month == 5, "autumn",
                                 ifelse(month == 6 | month == 7 | month == 8, "winter",
-                                       "spring"))))
+                                       "spring")))) %>%
+  mutate(hour = hour(melb_time),
+         minute = minute(melb_time),
+         second = second(melb_time),
+         hour_time = paste(hour,minute, second, sep=":")) %>%
+  mutate(hour_utc = hour(local_time))
   
 ```
 
@@ -68,6 +76,64 @@ p0 <- ggplot(new_dat,
 
 ggplotly(p0)
 ```
+
+```{r}
+
+ggplot(new_dat,
+       aes(x = melb_time, 
+           y = value,
+           color = site_id)) +
+  geom_line(size = 0.3,
+            alpha = 0.8) +
+  geom_smooth(method = "loess",
+              se = FALSE,
+              size = 0.8) +
+  facet_grid(site_id ~ ., 
+             # this code presents the facets in a  nice way
+             labeller = labeller(site_id = label_wrap_gen(20))) +
+  # this code mades the x axis a bit nicer to read
+  scale_x_datetime(date_labels = "%d %b %Y", 
+                   date_minor_breaks = "1 month") +
+  labs(x = "Date Time") +
+  scale_color_manual(values = color_index) +
+  theme(legend.position = "none")
+
+```
+
+```{r}
+ggplot(new_dat) +
+  geom_boxplot(aes(x = as_factor(hour),
+                   y = value))
+```
+
+```{r, fig.height= 8, fig.width= 5}
+
+ggplot(new_dat) +
+  geom_boxplot(aes(x = as_factor(hour),
+                   y = value)) +
+  facet_wrap(~ season, ncol = 1)
+```
+
+
+
+
+```{r}
+
+ggplot(new_dat) +
+  geom_boxplot(aes(x = as_factor(hour_utc),
+                   y = value))
+
+```
+
+```{r, fig.height= 8, fig.width= 5}
+
+ggplot(new_dat) +
+  geom_boxplot(aes(x = as_factor(hour_utc),
+                   y = value)) +
+  facet_wrap(~ season, ncol = 1)
+
+```
+
 
 ## Visualisation 2
 
