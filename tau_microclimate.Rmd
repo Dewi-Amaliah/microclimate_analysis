@@ -110,6 +110,8 @@ background-size: cover
 
 The [temperature](https://data.melbourne.vic.gov.au/Environment/Microclimate-Sensor-Readings/u4vh-84j8) and [sensor locations](https://data.melbourne.vic.gov.au/Environment/Microclimate-Sensor-Locations/irqv-hjr4) data are downloaded from the **City of Melbourne Open Data Website**.
 
+The data used from 2019/11/15 to 2020/10/23.
+
 --
 
 <br>
@@ -117,7 +119,7 @@ The [temperature](https://data.melbourne.vic.gov.au/Environment/Microclimate-Sen
 ### Key Variables
 
 - 5a.EPA-1h: Temperature (in degree Celsius) in one hour average.
-- local_time: Local date/time in UTC
+- local_time: Local date/time
 - site_id: The site id based on sensors' location.
 
 
@@ -299,7 +301,7 @@ leaflet(locations) %>%
       addCircleMarkers(lng = 144.9641,
                  lat = -37.80052,
                  color = "navy",
-                 label = "arc1046, 14.38C",
+                 label = "arc1046, Corner of Swanston and Grattan Streets, Carlton, 14.38C",
                  stroke = FALSE, fillOpacity = 0.7,
                  labelOptions = labelOptions(noHide = F, textOnly = FALSE),
                  radius = 14.38) %>%
@@ -307,28 +309,28 @@ leaflet(locations) %>%
                  lat = -37.80230,
                  color = "tomato",
                  stroke = FALSE, fillOpacity = 0.7,
-                 label = "arc1047, 14.79C",
+                 label = "arc1047, Corner of Pelham and Leicester Streets, Carlton, 14.79C",
                  labelOptions = labelOptions(noHide = F, textOnly = FALSE),
                  radius = 14.79) %>%
       addCircleMarkers(lng = 144.9646,
                  lat = -37.80058,
                  color = "purple",
                  stroke = FALSE, fillOpacity = 0.7,
-                 label = "arc1048, 14.22C",
+                 label = "arc1048, 141 Grattan Street, Carlton, 14.22C",
                  labelOptions = labelOptions(noHide = F, textOnly = FALSE),
                  radius = 14.22) %>%
       addCircleMarkers(lng = 144.9651,
                  lat = -37.80063,
                  color = "magenta",
                  stroke = FALSE, fillOpacity = 0.7,
-                 label = "arc1050, 14.12C",
+                 label = "arc1050, 3/121 Grattan Street, Carlton, 14.12C",
                  labelOptions = labelOptions(noHide = F, textOnly = FALSE),
                  radius = 14.12) %>%
       addCircleMarkers(lng = 144.9665,
                  lat = -37.80079,
                  color = "turquoise",
                  stroke = FALSE, fillOpacity = 0.7,
-                 label = "arc1045, 15.04C",
+                 label = "arc1045, Between 87 and 89 Grattan Street, Carlton, 15.04C",
                  labelOptions = labelOptions(noHide = F, textOnly = FALSE),
                  radius = 15.04) %>%
       addProviderTiles("Stamen.Watercolor") 
@@ -441,7 +443,7 @@ sp2
 <br>
 <br>
 <br>
-.right[Afternoon]
+.right[Evening]
 
 
 ]
@@ -472,7 +474,7 @@ sp3
 
 ---
 
-## Conclusion
+### Conclusion
 
 - ### The distribution of temperature is generally the same for every sensor.
 
@@ -486,6 +488,48 @@ sp3
 
 --
 - ### The microclimate is more noticeable by the hour.
+
+--
+- ### There is an evidence of a microclimate within Melbourne, proven by the difference of temperature in each sensor location. 
+
+---
+class: center, middle
+
+# Thank You
+
+---
+
+#### Reference
+
+Booth, Eliza. (2020). Melbourne trials innovative sensor technology program. Smart Cities Australia. https://smart-cities.com.au/melbourne-trials-innovative-sensor-technology-program/
+
+C. Sievert. Interactive Web-Based Data Visualization with R, plotly, and
+  shiny. Chapman and Hall/CRC Florida, 2020.
+  
+City of Melbourne Open Data Website. (2020). Microclimate Sensor Readings.        
+  https://data.melbourne.vic.gov.au/Environment/Microclimate-Sensor-Readings/u4vh-84j8
+  
+City of Melbourne Open Data Website. (2020). Microclimate Sensor Locations. 
+  https://data.melbourne.vic.gov.au/Environment/Microclimate-Sensor-Locations/irqv-hjr4
+  
+Joe Cheng, Bhaskar Karambelkar and Yihui Xie (2019). leaflet: Create
+  Interactive Web Maps with the JavaScript 'Leaflet' Library. R package
+  version 2.0.3. https://CRAN.R-project.org/package=leaflet
+  
+
+Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source
+  Software, 4(43), 1686, https://doi.org/10.21105/joss.01686
+
+Wikipedia. (2020). Microclimate. https://en.wikipedia.org/wiki/Microclimate
+  
+Yihui Xie (2020). xaringan: Presentation Ninja. R package version 0.17.
+  https://CRAN.R-project.org/package=xaringan
+  
+
+  
+
+
+
 
 
 
